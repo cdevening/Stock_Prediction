@@ -20,7 +20,7 @@ def extract_features():
     
     START_DATE = (datetime.date.today() - datetime.timedelta(days=365)).strftime("%Y-%m-%d")
     END_DATE = datetime.date.today().strftime("%Y-%m-%d")
-    stk_tickers = ['MSFT', 'IBM', 'GOOGL']
+    stk_tickers = ['AAPL', 'NVDA', 'AMZN']
     ccy_tickers = ['DEXJPUS', 'DEXUSUK']
     idx_tickers = ['SP500', 'DJIA', 'VIXCLS']
     
@@ -36,10 +36,21 @@ def extract_features():
     X1.columns = X1.columns.droplevel()
     X2 = np.log(ccy_data).diff(return_period)
     X3 = np.log(idx_data).diff(return_period)
+    px = stk_data.loc[:, ('Adj Close', 'AAPL')]
+    ret1 = np.log(px).diff()
 
-    X = pd.concat([X1, X2, X3], axis=1)
+    X = pd.concat([X1, X2, X3], axis=1).assign(
+    AAPL_ret_1  = ret1,
+    AAPL_vol_20 = ret1.rolling(20).std(),
+    AAPL_mom_10 = np.log(px / px.shift(10)),
+    AAPL_hl_rng = np.log(stk_data.loc[:, ('High','AAPL')] / stk_data.loc[:, ('Low','AAPL')]),
+    AAPL_oc_ret = np.log(stk_data.loc[:, ('Close','AAPL')] / stk_data.loc[:, ('Open','AAPL')])
+)
+
+    # Final dataset
     
     dataset = pd.concat([Y, X], axis=1).dropna().iloc[::return_period, :]
+    
     Y = dataset.loc[:, Y.name]
     X = dataset.loc[:, X.columns]
     dataset.index.name = 'Date'
@@ -66,4 +77,5 @@ def get_bitcoin_historical_prices(days = 60):
     df['Date'] = pd.to_datetime(df['Timestamp'], unit='ms').dt.normalize()
     df = df[['Date', 'Close Price (USD)']].set_index('Date')
     return df
+
 
