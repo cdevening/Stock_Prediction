@@ -165,10 +165,11 @@ with st.form("pred_form"):
 if submitted:
 
     data_row = [user_inputs[k] for k in MODEL_INFO["keys"]]
-    # Prepare data
-    # base_df = df_features
-    # input_df = pd.concat([base_df, pd.DataFrame([data_row], columns=base_df.columns)])
     input_df = pd.DataFrame([data_row], columns=MODEL_INFO["keys"])
+
+    input_df['peer_sentiment_mean'] = input_df[['ADBE', 'GOOG', 'AMZN']].mean(axis=1)
+    input_df['peer_sentiment_std'] = input_df[['ADBE', 'GOOG', 'AMZN']].std(axis=1)
+    input_df['target_vs_peer_gap'] = input_df['sentiment_LSTM'] - input_df['peer_sentiment_mean']
     
     res, status = call_model_api(input_df)
     if status == 200:
