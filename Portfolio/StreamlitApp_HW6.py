@@ -106,7 +106,7 @@ def call_model_api(input_df):
         deserializer=NumpyDeserializer() 
     )
 
-     try:
+    try:
         # For regression
         raw_pred = predictor.predict(input_df)
         pred_val = pd.DataFrame(raw_pred).values[-1][0]
