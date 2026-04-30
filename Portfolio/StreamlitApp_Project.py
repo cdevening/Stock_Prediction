@@ -63,11 +63,16 @@ sm_session = sagemaker.Session(boto_session=session)
 # Data & Model Configuration
 
 MODEL_INFO = {
-    "endpoint"  : aws_endpoint,
-    "explainer" : "explainer_sentiment.shap",
-    "pipeline"  : "finalized_fraud_model.tar.gz",
-    "keys"      : ['TransactionAmt','card6_freq_enc','card3','C12'],
-    "inputs"    : [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['TransactionAmt','card6_freq_enc','card3','C12']]
+    "endpoint": aws_endpoint,
+    "explainer": "explainer_loan_default.shap",
+    "pipeline": "finalized_loan_default_model.tar.gz",
+    "keys": ['loan_amnt', 'int_rate', 'annual_inc', 'dti'],
+    "inputs": [
+        {"name": "loan_amnt", "type": "number", "min": 500.0, "max": 40000.0, "default": 10000.0, "step": 500.0},
+        {"name": "int_rate", "type": "number", "min": 0.0, "max": 35.0, "default": 12.0, "step": 0.1},
+        {"name": "annual_inc", "type": "number", "min": 0.0, "max": 500000.0, "default": 60000.0, "step": 1000.0},
+        {"name": "dti", "type": "number", "min": 0.0, "max": 50.0, "default": 18.0, "step": 0.1}
+    ]
 }
 
 
