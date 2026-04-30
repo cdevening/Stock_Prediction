@@ -120,8 +120,8 @@ def call_model_api(input_df):
         raw_pred = predictor.predict(input_df)
         pred_val = pd.DataFrame(raw_pred).values[-1][0]
         #mapping = {0: "SELL", 1: "HOLD", 2: "BUY"}
-        mapping = {0: "Legitimate", 1: "Fraud"}
-        return mapping.get(pred_val), 200
+        mapping = {0: "Fully Paid / Lower Risk", 1: "Charged Off / Higher Risk"}
+        return mapping.get(int(pred_val), str(pred_val)), 200
     except Exception as e:
         return f"Error: {str(e)}", 500
 
@@ -172,10 +172,10 @@ with st.form("pred_form"):
 original = dataset.iloc[0:1].to_dict()
 original.update(user_inputs)
 if submitted:
+    input_payload = user_inputs.copy()
 
-    res, status = call_model_api(original)
+    res, status = call_model_api(input_payload)
     if status == 200:
         st.metric("Prediction Result", res)
-        display_explanation(original,session, aws_bucket)
     else:
         st.error(res)
