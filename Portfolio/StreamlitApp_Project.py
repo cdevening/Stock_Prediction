@@ -169,8 +169,6 @@ with st.form("pred_form"):
    
     submitted = st.form_submit_button("Run Prediction")
 
-original = dataset.iloc[0:1].to_dict()
-original.update(user_inputs)
 if submitted:
     input_payload = user_inputs.copy()
 
