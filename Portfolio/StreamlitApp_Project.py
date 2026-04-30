@@ -178,7 +178,7 @@ with st.form("pred_form"):
                 min_value=inp['min'], max_value=inp['max'], value=inp['default'], step=inp['step']
             )
    
-   submitted = st.form_submit_button("Run Prediction")
+    submitted = st.form_submit_button("Run Prediction")
 
 if submitted:
     input_payload = user_inputs.copy()
