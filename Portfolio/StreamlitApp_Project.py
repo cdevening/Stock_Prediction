@@ -126,29 +126,6 @@ def call_model_api(input_df):
         return f"Error: {str(e)}", 500
 
 # Local Explainability
-def display_explanation(input_df, session, aws_bucket):
-    explainer_name = MODEL_INFO["explainer"]
-    explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
-   
-    best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
-    preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
-    input_df=pd.DataFrame(input_df)
-    input_df_transformed = preprocessing_pipeline.transform(input_df)
-    #feature_names = best_pipeline[:-3].get_feature_names_out()
-    dataset_1 = dataset.iloc[:, 0:]
-    feature_names = dataset_1.columns[1:]
-    selector = best_pipeline.named_steps['selector']
-    selected_features = feature_names[selector.get_support()]
-    input_df_transformed = pd.DataFrame(input_df_transformed, columns=selected_features)
-    #input_df_transformed = pd.DataFrame(input_df_transformed)
-    shap_values = explainer(input_df_transformed)
-   
-    st.subheader("🔍 Decision Transparency (SHAP)")
-    fig, ax = plt.subplots(figsize=(10, 4))
-    shap.plots.waterfall(shap_values[0, :, 1])  # class 1 = fraud
-    st.pyplot(fig)
-    top_feature = pd.Series(shap_values[0, :, 1].values, index=shap_values[0, :, 1].feature_names).abs().idxmax()
-    st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
 
 
 # Streamlit UI
