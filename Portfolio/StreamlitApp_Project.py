@@ -36,7 +36,6 @@ project_root = os.path.abspath(os.path.join(current_dir, '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.feature_utils import build_loan_default_input
 
 #from src.Custom_Classes import DropHighMissingCols, TransactionFeatureEngineer, DropHighCorrelation
 #from src.Custom_Classes import DropHighMissingCols, TransactionFeatureEngineer, DropHighCorrelation
@@ -186,7 +185,7 @@ with st.form("pred_form"):
 
 if submitted:
     input_payload = user_inputs.copy()
-    input_df = build_loan_default_input(input_payload)
+    input_df = pd.DataFrame([input_payload], columns=MODEL_INFO["keys"])
 
     res, status = call_model_api(input_payload)
     if status == 200:
