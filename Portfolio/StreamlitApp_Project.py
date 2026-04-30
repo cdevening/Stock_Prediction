@@ -39,6 +39,11 @@ if project_root not in sys.path:
 #from src.feature_utils import extract_features
 #from src.Custom_Classes import DropHighMissingCols, TransactionFeatureEngineer, DropHighCorrelation
 
+file_path = os.path.join(project_root, 'Portfolio/X_train.csv')
+
+dataset = pd.read_csv(file_path)
+dataset = dataset.drop(['Unnamed: 0'],axis=1)
+#dataset = dataset.loc[:, ~dataset.columns.str.contains('^Unnamed')]
 
 # Access the secrets
 aws_id = st.secrets["aws_credentials"]["AWS_ACCESS_KEY_ID"]
@@ -63,16 +68,11 @@ sm_session = sagemaker.Session(boto_session=session)
 # Data & Model Configuration
 
 MODEL_INFO = {
-    "endpoint": aws_endpoint,
-    "explainer": "explainer_loan_default.shap",
-    "pipeline": "finalized_loan_default_model.tar.gz",
-    "keys": ['loan_amnt', 'int_rate', 'annual_inc', 'dti'],
-    "inputs": [
-        {"name": "loan_amnt", "type": "number", "min": 500.0, "max": 40000.0, "default": 10000.0, "step": 500.0},
-        {"name": "int_rate", "type": "number", "min": 0.0, "max": 35.0, "default": 12.0, "step": 0.1},
-        {"name": "annual_inc", "type": "number", "min": 0.0, "max": 500000.0, "default": 60000.0, "step": 1000.0},
-        {"name": "dti", "type": "number", "min": 0.0, "max": 50.0, "default": 18.0, "step": 0.1}
-    ]
+    "endpoint"  : aws_endpoint,
+    "explainer" : "explainer_sentiment.shap",
+    "pipeline"  : "finalized_fraud_model.tar.gz",
+    "keys"      : ['TransactionAmt','card6_freq_enc','card3','C12'],
+    "inputs"    : [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['TransactionAmt','card6_freq_enc','card3','C12']]
 }
 
 
@@ -120,12 +120,35 @@ def call_model_api(input_df):
         raw_pred = predictor.predict(input_df)
         pred_val = pd.DataFrame(raw_pred).values[-1][0]
         #mapping = {0: "SELL", 1: "HOLD", 2: "BUY"}
-        mapping = {0: "Fully Paid / Lower Risk", 1: "Charged Off / Higher Risk"}
-        return mapping.get(int(pred_val), str(pred_val)), 200
+        mapping = {0: "Legitimate", 1: "Fraud"}
+        return mapping.get(pred_val), 200
     except Exception as e:
         return f"Error: {str(e)}", 500
 
 # Local Explainability
+def display_explanation(input_df, session, aws_bucket):
+    explainer_name = MODEL_INFO["explainer"]
+    explainer = load_shap_explainer(session, aws_bucket, posixpath.join('explainer', explainer_name),os.path.join(tempfile.gettempdir(), explainer_name))
+   
+    best_pipeline = load_pipeline(session, aws_bucket, 'sklearn-pipeline-deployment')
+    preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
+    input_df=pd.DataFrame(input_df)
+    input_df_transformed = preprocessing_pipeline.transform(input_df)
+    #feature_names = best_pipeline[:-3].get_feature_names_out()
+    dataset_1 = dataset.iloc[:, 0:]
+    feature_names = dataset_1.columns[1:]
+    selector = best_pipeline.named_steps['selector']
+    selected_features = feature_names[selector.get_support()]
+    input_df_transformed = pd.DataFrame(input_df_transformed, columns=selected_features)
+    #input_df_transformed = pd.DataFrame(input_df_transformed)
+    shap_values = explainer(input_df_transformed)
+   
+    st.subheader("🔍 Decision Transparency (SHAP)")
+    fig, ax = plt.subplots(figsize=(10, 4))
+    shap.plots.waterfall(shap_values[0, :, 1])  # class 1 = fraud
+    st.pyplot(fig)
+    top_feature = pd.Series(shap_values[0, :, 1].values, index=shap_values[0, :, 1].feature_names).abs().idxmax()
+    st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
 
 
 # Streamlit UI
@@ -146,11 +169,13 @@ with st.form("pred_form"):
    
     submitted = st.form_submit_button("Run Prediction")
 
+original = dataset.iloc[0:1].to_dict()
+original.update(user_inputs)
 if submitted:
-    input_payload = user_inputs.copy()
 
-    res, status = call_model_api(input_payload)
+    res, status = call_model_api(original)
     if status == 200:
         st.metric("Prediction Result", res)
+        display_explanation(original,session, aws_bucket)
     else:
         st.error(res)
