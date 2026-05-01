@@ -65,8 +65,8 @@ sm_session = sagemaker.Session(boto_session=session)
 
 MODEL_INFO = {
     "endpoint": aws_endpoint,
-    "explainer": "explainer_loan_default.shap",
-    "pipeline": "finalized_loan_default_model.tar.gz",
+    "explainer": "shap_explainer.pkl",
+    "pipeline": "finalized_loan_model.tar.gz",
     "keys": ['loan_amnt', 'int_rate', 'annual_inc', 'dti'],
     "inputs": [
         {"name": "loan_amnt", "type": "number", "min": 500.0, "max": 40000.0, "default": 10000.0, "step": 500.0},
@@ -139,25 +139,19 @@ def display_explanation(input_df, session, aws_bucket):
     preprocessing_pipeline = Pipeline(steps=best_pipeline.steps[:-2])
 
     input_df_transformed = preprocessing_pipeline.transform(input_df)
-    input_df_transformed = pd.DataFrame(input_df_transformed, columns=final_features)
+    feature_names = best_pipeline[1:4].get_feature_names_out()
+    input_df_transformed = pd.DataFrame(input_df_transformed, columns=feature_names)
 
     shap_values = explainer(input_df_transformed)
 
     st.subheader("🔍 Decision Transparency (SHAP)")
     fig, ax = plt.subplots(figsize=(10, 4))
 
-    try:
-        shap.plots.waterfall(shap_values[0, :, 1])
-        top_feature = pd.Series(
-            shap_values[0, :, 1].values,
-            index=shap_values[0, :, 1].feature_names
-        ).abs().idxmax()
-    except Exception:
-        shap.plots.waterfall(shap_values[0])
-        top_feature = pd.Series(
-            shap_values[0].values,
-            index=shap_values[0].feature_names
-        ).abs().idxmax()
+    shap.plots.waterfall(shap_values[0, :, 0])
+    top_feature = pd.Series(
+        shap_values[0, :, 0].values,
+        index=shap_values[0, :, 0].feature_names
+    ).abs().idxmax()
 
     st.pyplot(fig)
     st.info(f"**Business Insight:** The most influential factor in this decision was **{top_feature}**.")
